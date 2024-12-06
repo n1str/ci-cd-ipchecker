@@ -36,3 +36,23 @@ jobs:
     - name: Run tests
       run: |
         go test -v ./...
+        
+    - name: Build Docker image
+      run: docker build -t ${{ secrets.DOCKER_USERNAME }}/ipchecker:latest .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Deploy to remote server
+      uses: appleboy/ssh-action@v0.1.8
+      with:
+        host: ${{ secrets.REMOTE_HOST }}
+        username: ${{ secrets.REMOTE_USER }}
+        password: ${{ secrets.REMOTE_PASSWORD }}
+        script: |
+          docker pull ${{ secrets.DOCKER_USERNAME }}/ipchecker:latest
+          docker stop ipchecker || true
+          docker rm ipchecker || true
+          docker run -d -p 8080:8080 --name ipchecker ${{ secrets.DOCKER_USERNAME }}/ipchecker:latest
